@@ -33,6 +33,7 @@ defval('res',10)
 defval('buf',0)
 defval('lonc',0)
 defval('latc',-90)
+defval('rotb',1)
 
 
 if ~isstr(res) % Not a demo
@@ -85,7 +86,7 @@ if ~isstr(res) % Not a demo
       else
           % We make a new buffer
           disp('Buffering the coastlines... this may take a while');
-          XY=ANT_pantarcticaRM12(res);
+          XYp=ANT_pantarcticaRM12(res);
           if buf > 0
              inout='outPlusInterior';
           else
@@ -95,16 +96,46 @@ if ~isstr(res) % Not a demo
           %%%
           % Make wantarctica first
           %%%
-          [LatB,LonB] = bufferm(XY(:,2),XY(:,1),buf,inout);
+          %[LatB,LonB] = bufferm(XYw(:,2),XYw(:,1),buf,inout);
           % Periodize our way
-          LonB(LonB<0) = LonB(LonB<0)+360;
-          % Now subtract a nearby buffed version of Ellesmere
-          XY2 = ANT_wantarcticaRM12(10);
-
-
+          %LonB(LonB<0) = LonB(LonB<0)+360;
+          
+          % Need to rotate pantarctica to the equator
+    % Convert to Cartesian coordinates
+    [X,Y,Z]=sph2cart(XYp(:,1)*pi/180,XYp(:,2)*pi/180,1);
+    [Xc,Yc,Zc]=sph2cart(lonc*pi/180,latc*pi/180,1);
+    % Apply the rotation to put it on the equator
+    xyzp=[roty(-latc*pi/180)*rotz(lonc*pi/180)*[X(:) Y(:) Z(:)]']';
+    xyzc=[roty(-latc*pi/180)*rotz(lonc*pi/180)*[Xc   Yc   Zc  ]']';
+    % See LOCALIZATION and KLMLMP2ROT for the counterrotation
+    % Transform back to spherical coordinates
+    [phi,piminth,r]=cart2sph(xyzp(:,1),xyzp(:,2),xyzp(:,3));
+    lon=phi*180/pi; lat=piminth*180/pi;
+    [phic,piminthc]=cart2sph(xyzc(1),xyzc(2),xyzc(3));
+    loncp=phic*180/pi; latcp=piminthc*180/pi;
+    XYp = [lon lat];
+    
+              [LatB,LonB] = bufferm(XYp(:,2),XYp(:,1),buf,inout);
+              
+    % Get the original Wantarctica region
+    % But remember to rotate to the equator
+    XYw = ANT_wantarcticaRM12(10);
+    [X,Y,Z]=sph2cart(XYw(:,1)*pi/180,XYw(:,2)*pi/180,1);
+    [Xc,Yc,Zc]=sph2cart(lonc*pi/180,latc*pi/180,1);
+    % Apply the rotation to put it on the equator
+    xyzp=[roty(-latc*pi/180)*rotz(lonc*pi/180)*[X(:) Y(:) Z(:)]']';
+    xyzc=[roty(-latc*pi/180)*rotz(lonc*pi/180)*[Xc   Yc   Zc  ]']';
+    % See LOCALIZATION and KLMLMP2ROT for the counterrotation
+    % Transform back to spherical coordinates
+    [phi,piminth,r]=cart2sph(xyzp(:,1),xyzp(:,2),xyzp(:,3));
+    lon=phi*180/pi; lat=piminth*180/pi;
+    [phic,piminthc]=cart2sph(xyzc(1),xyzc(2),xyzc(3));
+    loncp=phic*180/pi; latcp=piminthc*180/pi;
+    XYw = [lon lat];
+    
+ 
           % Now subtract these regions
-          [x1,y1] = polybool('subtraction',LonB,LatB,XY2(:,1),XY2(:,2));
-
+          [x1,y1] = polybool('subtraction',LonB,LatB,XYw(:,1),XYw(:,2));
           
           XY = [x1 y1];
                 
@@ -118,7 +149,7 @@ if ~isstr(res) % Not a demo
           % Now we look at the new piece, and we know we must fix some edges
           % where the things intersected.
           hdl1=figure;
-          plot(x2,y2);
+          plot(x1,y1);
           title('This plot is used to edit the coastlines.')
     
           fprintf(['The functions ELLESMERE has paused, and made a plot \n'...
@@ -127,31 +158,50 @@ if ~isstr(res) % Not a demo
 
           fprintf(['DIRECTIONS:  Select the data points you want to remove with \n'...
           'the brush tool.  Then right click and remove them.  After you have\n'...
-          ' finished removing the points you want, select the entire curve \n'...
-          'with the brush tool, and type return.  The program will save the \n'...
-          'currently brushed data in a variable, and then make another plot \n'...
+          ' finished removing the points you want, type dbcont.  The program will save the \n'...
+          'remaining data in a variable, and then make another plot \n'...
           'for you to confirm you did it right.\n'])
           keyboard
-    
+          
+          b = findobj(hdl1,'Type','Line');
+          % Make sure they are closed, this also handily removes duplicate NaNs
+          [x,y]=closePolygonParts(b.XData,b.YData);
+          
+          %brushidx = logical(b.BrushData);
+          %brushedXData = b.XData(brushidx);
+          %brushedYData = b.YData(brushidx);
           % Get the brushed data from the plot
-          pause(0.1);
-          hBrushLine = findall(hdl1,'tag','Brushing');
-          brushedData = get(hBrushLine, {'Xdata','Ydata'});
-          brushedIdx = ~isnan(brushedData{1});
-          brushedXData = brushedData{1}(brushedIdx);
-          brushedYData = brushedData{2}(brushedIdx);
+%           pause(0.1);
+%           hBrushLine = findall(hdl1,'tag','Brushing');
+%           brushedData = get(hBrushLine, {'Xdata','Ydata'});
+%           brushedIdx = ~isnan(brushedData{1});
+%           brushedXData = brushedData{1}(brushedIdx);
+%           brushedYData = brushedData{2}(brushedIdx);
     
           figure
-          plot(brushedXData,brushedYData)
+          plot(x,y)
           title('This figure confirms the new data you selected with the brush.')
     
           fprintf(['The newest figure shows the data you selected with the brush \n'...
-          'tool after you finished editing.  If this is correct, type return.\n'...
+          'tool after you finished editing.  If this is correct, type dbcont.\n'...
           '  If this is incorrect, type dbquit and run this program again to redo.\n'])
           keyboard
     
-          XY = [brushedXData' brushedYData'];  
+          XY = [x' y'];  
   
+          % We rotate back to the south? [default: yes]
+          if rotb==1
+             [thetap,phip,rotmats]=rottp((90-XY(:,2))*pi/180,XY(:,1)/180*pi,lonc,latc*pi/180,0);
+             XY = [phip*180/pi 90-thetap*180/pi];
+          end
+
+          % Periodize our way
+          lon=XY(:,1);
+          lat=XY(:,2);
+          lon(lon<0) = lon(lon<0)+360;
+          XY = [lon lat];
+
+    
       end % end if fnpl2 exist
     
     end % end if buf>0

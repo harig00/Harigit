@@ -33,6 +33,7 @@ defval('res',10)
 defval('buf',0)
 defval('lonc',0)
 defval('latc',-90)
+defval('rotb',1)
 
 
 if ~isstr(res) % Not a demo
@@ -160,31 +161,61 @@ if ~isstr(res) % Not a demo
 
           fprintf(['DIRECTIONS:  Select the data points you want to remove with \n'...
           'the brush tool.  Then right click and remove them.  After you have\n'...
-          ' finished removing the points you want, select the entire curve \n'...
-          'with the brush tool, and type return.  The program will save the \n'...
-          'currently brushed data in a variable, and then make another plot \n'...
+          ' finished removing the points you want, type dbcont.  The program will save the \n'...
+          'remaining data in a variable, and then make another plot \n'...
           'for you to confirm you did it right.\n'])
           keyboard
-    
+          
+          b = findobj(hdl1,'Type','Line');
+          % Make sure they are closed, this also handily removes duplicate NaNs
+          [x,y]=closePolygonParts(b.XData,b.YData);
+          
+          %brushidx = logical(b.BrushData);
+          %brushedXData = b.XData(brushidx);
+          %brushedYData = b.YData(brushidx);
           % Get the brushed data from the plot
-          pause(0.1);
-          hBrushLine = findall(hdl1,'tag','Brushing');
-          brushedData = get(hBrushLine, {'Xdata','Ydata'});
-          brushedIdx = ~isnan(brushedData{1});
-          brushedXData = brushedData{1}(brushedIdx);
-          brushedYData = brushedData{2}(brushedIdx);
+%           pause(0.1);
+%           hBrushLine = findall(hdl1,'tag','Brushing');
+%           brushedData = get(hBrushLine, {'Xdata','Ydata'});
+%           brushedIdx = ~isnan(brushedData{1});
+%           brushedXData = brushedData{1}(brushedIdx);
+%           brushedYData = brushedData{2}(brushedIdx);
     
           figure
-          plot(brushedXData,brushedYData)
+          plot(x,y)
           title('This figure confirms the new data you selected with the brush.')
     
           fprintf(['The newest figure shows the data you selected with the brush \n'...
-          'tool after you finished editing.  If this is correct, type return.\n'...
+          'tool after you finished editing.  If this is correct, type dbcont.\n'...
           '  If this is incorrect, type dbquit and run this program again to redo.\n'])
           keyboard
     
-          XY = [brushedXData' brushedYData'];  
+          % Check to see if the first or last point is now NaN, because
+          % this will not work then when we go to make the kernel.
+          if isnan(x(1)) 
+              x = x(2:end);
+              y = y(2:end);
+          elseif isnan(x(end))
+              x = x(1:end-1);
+              y = y(1:end-1);
+          end
+          
+          XY = [x' y'];  
   
+          
+          % We rotate back to the south? [default: yes]
+          if rotb==1
+             [thetap,phip,rotmats]=rottp((90-XY(:,2))*pi/180,XY(:,1)/180*pi,lonc,latc*pi/180,0);
+             XY = [phip*180/pi 90-thetap*180/pi];
+          end
+
+          % Periodize our way
+          lon=XY(:,1);
+          lat=XY(:,2);
+          lon(lon<0) = lon(lon<0)+360;
+          XY = [lon lat];
+
+    
       end % end if fnpl2 exist
     
     end % end if buf>0
