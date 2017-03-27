@@ -22,8 +22,8 @@ defval('buf',0)
 if ~isstr(res)
 
   XYg = greenland(res,buf);
-  XYe = ellesmere(res,buf);
-  XYb = baffin(res,buf);
+  XYe = ellesmereg(res,buf);
+  XYb = baffing(res,buf);
 
   [X,Y] = polybool('union',XYg(:,1),XYg(:,2),XYe(:,1),XYe(:,2));
   [X,Y] = polybool('union',X,Y,XYb(:,1),XYb(:,2));

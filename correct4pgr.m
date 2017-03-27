@@ -1,5 +1,5 @@
 function varargout=correct4pgr(thedates,model,TH,L,phi,theta,omega)
-% [thedates,PGRt,PGRtU,PGRtL]=CORRECT4PGR(thedates,model,TH,L)
+% [thedates,PGRt,PGRtU,PGRtL,trend]=CORRECT4PGR(thedates,model,TH,L)
 %
 % This function accepts an array of dates (in matlab datenum format) and
 % calculates the surface mass density change from a certain PGR model at
@@ -63,6 +63,8 @@ function varargout=correct4pgr(thedates,model,TH,L,phi,theta,omega)
 %                Slepian coefficient.
 % PGRtU         Same as PGRt, but if the model has an upper bound
 % PGRtL         Same as PGRt, but if the model has a lower bound
+% trend         This is the magnitude of the correction in units of Gt/yr.
+%                This output will only work if you gave a Slepian basis.
 %
 %
 % NOTES:  It is left to the user to obtain the aforementioned PGR models
@@ -100,7 +102,7 @@ function varargout=correct4pgr(thedates,model,TH,L,phi,theta,omega)
 %    sea-level change and present-day uplift rates. Geophysical Journal 
 %    International 190, 1464-1482. doi:10.1111/j.1365-246X.2012.05557.x
 %
-% Last modified by charig-at-princeton.edu on 9/03/2014
+% Last modified by charig-at-princeton.edu on 2/26/2016
 
 %defval('TH',{'greenland' 0.5});
 defval('L',60);
@@ -200,6 +202,32 @@ if exist('TH','var')
         end
     end
     
+    % How large is this signal we just made?
+    % To answer this we integrate the basis functions and multiply by the
+    % coefficients representing the annual rate.
+    % Note: the falpha from the models should already be in units of
+    % surface mass density change per year.
+    for j=1:round(N)
+      cosi=lmcosiW(:,3:4);
+      cosi(ronm)=G(:,j);
+      CC{j} = [lmcosiW(:,1:2) cosi]; 
+   end
+   [eigfunINT] = integratebasis(CC,TH,round(N));
+   % Since Int should have units of (fn * m^2), need to go from fractional
+   % sphere area to real area.  If the fn is surface density, this output is
+   % in kilograms.  Then change the units from kg to Gt in METRIC tons
+   eigfunINT = eigfunINT*4*pi*6370000^2/10^3/10^9;
+   functionintegrals = eigfunINT;
+    
+   % Now multiply by the appropriate slepcoffs to get the months
+   % This becomes alpha by months
+   %functimeseries=repmat(eigfunINT',1,nmonths).*sleptdelta(:,1:N)';
+   %functimeseries = sleptdelta(:,1:N)';
+
+   total=eigfunINT*(falpha(1:round(N))*365); % Back to per year
+   
+    
+    
 else % Just do the plms
     for i = 1:length(newdates)
         PGRt(i,:,:) = [lmcosiM(:,1:2) lmcosiM(:,3:4)*newdates(i)];
@@ -224,7 +252,7 @@ end % end if exist
 if exist('lmcosiU','var') && exist('lmcosiL','var')
    varns={thedates,PGRt,PGRtU,PGRtL}; 
 else
-   varns={thedates,PGRt};
+   varns={thedates,PGRt,[],[],total};
 end
 varargout=varns(1:nargout);
 
