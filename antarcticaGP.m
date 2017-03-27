@@ -36,6 +36,9 @@ defval('lonc',0)
 defval('latc',-90)
 defval('rotb',0)
 
+
+if ~isstr(res) % Not a demo
+    
 % The directory where you keep the coordinates
 whereitsat=fullfile(getenv('IFILES'),'COASTS');
 
@@ -136,4 +139,11 @@ else
   
   varns={XY,lonc,latc};
   varargout=varns(1:nargout);
+end %if fnpl exists
+
+elseif strcmp(res,'rotated')
+    % Return a 1 flag as output, indicating the region is a rotated region
+    varargout={1};
+  
+  
 end
