@@ -77,7 +77,9 @@ else
       XYb=bezier(XY,res);
       XY=XYb;
   else
-   
+      % We need to start from scratch. So use the base coastlines at the
+      % default resolution.
+      load(fullfile(getenv('IFILES'),'COASTS','antarcticaGP.mat'));
   
   % Do we buffer?
    if buf ~= 0
