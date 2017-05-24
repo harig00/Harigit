@@ -1,5 +1,5 @@
 function varargout=exportboundaries(regions,savedir)  
-% XY=exportboundaries(varargin)
+% exportboundaries(varargin)
 % 
 % Export coordinates to a ascii file.  Useful if you want to use them in GMT.
 %
