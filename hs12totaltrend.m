@@ -24,7 +24,7 @@ defval('nmonths',length(thedates));
 
 % Do the correction for GIA
 % FYI, PGRt is referenced to the first date
-[thedates,PGRt]=correct4pgr(thedates,'Paulson07',{dom XYbuffer},60);
+[thedates,PGRt]=correct4gia(thedates,'Paulson07',{dom XYbuffer},60);
 sleptcorrected = slept - PGRt;
 
 
